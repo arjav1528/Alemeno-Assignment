@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends
+import pandas as pd
+from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.orm import Session
 
 from db.database import get_db
@@ -35,5 +36,16 @@ def read_job_status(job_id: int, db: Session = Depends(get_db)):
         if job:
             return {"status": job.status}
         return {"error": "Job not found"}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@router.post("/upload")
+def upload_job(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    try:
+        contents = file.file
+        df = pd.read_csv(contents)
+        print(df.head())
+        return {"message": "Job uploaded successfully"}
     except Exception as e:
         return {"error": str(e)}
