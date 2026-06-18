@@ -26,6 +26,10 @@ class Job(Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    def __repr__(self) -> str:
+        return f"<Job(id={self.id}, filename={self.filename}, status={self.status})>"
+        
+
 
 class JobSummary(Base):
     __tablename__ = "job_summaries"

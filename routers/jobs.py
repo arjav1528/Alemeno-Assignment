@@ -45,7 +45,12 @@ def upload_job(file: UploadFile = File(...), db: Session = Depends(get_db)):
     try:
         contents = file.file
         df = pd.read_csv(contents)
-        print(df.head())
-        return {"message": "Job uploaded successfully"}
+        row_count_raw = len(df)
+        filename = file.filename
+        job = Job(row_count_raw=row_count_raw, filename=filename)
+        db.add(job)
+        db.commit()
+        return {"message": "Job uploaded successfully", "job_id": job.id}
     except Exception as e:
+        db.rollback()
         return {"error": str(e)}
