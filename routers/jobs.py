@@ -16,6 +16,18 @@ def read_jobs(db: Session = Depends(get_db)):
         return {"error": str(e)}
 
 
+@router.delete("/")
+def delete_job(db: Session = Depends(get_db)):
+    try:
+        jobs = db.query(Job).all()
+        for job in jobs:
+            db.delete(job)
+            db.commit()
+        return {"message": "Jobs deleted successfully"}
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @router.get("/{job_id}/status")
 def read_job_status(job_id: int, db: Session = Depends(get_db)):
     try:
