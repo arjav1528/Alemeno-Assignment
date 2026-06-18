@@ -8,9 +8,9 @@ from db.database import Base
 
 
 class JobStatus(enum.Enum):
-    pending = "pending"
-    completed = "completed"
-    failed = "failed"
+    PENDING = "pending"
+    SUCCESS = "success"
+    FAILED = "failed"
 
 
 class Job(Base):
@@ -18,7 +18,8 @@ class Job(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     filename: Mapped[str] = mapped_column(String)
     status: Mapped[JobStatus] = mapped_column(
-        Enum(JobStatus), default=JobStatus.pending
+        Enum(JobStatus, values_callable=lambda enum_cls: [item.value for item in enum_cls]),
+        default=JobStatus.PENDING,
     )
     row_count_raw: Mapped[int] = mapped_column(Integer)
     row_count_clean: Mapped[int | None] = mapped_column(Integer, nullable=True)
