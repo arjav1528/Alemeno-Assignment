@@ -1,10 +1,10 @@
-from sqlalchemy import Boolean, Float, ForeignKey, String, Text
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import Enum
 import enum
 
-Base = declarative_base()
+from sqlalchemy import Boolean, Enum, Float, ForeignKey, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
+
+from db.database import Base
+
 
 class Currency(enum.Enum):
     USD = "USD"

@@ -2,10 +2,9 @@ import enum
 from datetime import datetime
 
 from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, String, Text
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Mapped, mapped_column
 
-Base = declarative_base()
+from db.database import Base
 
 
 class JobStatus(enum.Enum):
