@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from db.database import get_db
@@ -13,19 +13,4 @@ async def get_transactions(db: Session = Depends(get_db)):
         transactions = db.query(Transaction).all()
         return transactions
     except Exception as e:
-        return {"error": str(e)}
-    finally:
-        db.close()
-
-
-@router.delete("/")
-async def delete_transaction(db: Session = Depends(get_db)):
-    try:
-        db.query(Transaction).delete()
-        db.commit()
-        return {"message": "Transactions deleted successfully"}
-    except Exception as e:
-        db.rollback()
-        return {"error": str(e)}
-    finally:
-        db.close()
+        raise HTTPException(status_code=500, detail=str(e))

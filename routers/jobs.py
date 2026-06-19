@@ -1,8 +1,8 @@
 import json
 
-from fastapi.exceptions import HTTPException
 import pandas as pd
 from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi.exceptions import HTTPException
 from sqlalchemy.orm import Session
 
 from db.database import get_db
@@ -11,6 +11,7 @@ from lib.cleaning import clean_transactions
 from lib.process import process_job
 from models.job import Job, JobStatus, JobSummary
 from models.transaction import Currency, Transaction, TxnStatus
+from routers import transaction
 
 router = APIRouter(prefix="/jobs")
 
@@ -22,15 +23,19 @@ def read_jobs(status: str | None = None, db: Session = Depends(get_db)):
         query = query.filter(Job.status == status)
     return query.all()
 
+
 @router.delete("/")
 def delete_job(db: Session = Depends(get_db)):
     try:
-        jobs = db.query(Job).all()
-        for job in jobs:
-            db.delete(job)
-            db.commit()
-        return {"message": "Jobs deleted successfully"}
+        db.query(JobSummary).delete()
+        db.commit()
+        db.query(Transaction).delete()
+        db.commit()
+        db.query(Job).delete()
+        db.commit()
+        return {"message": "DB cleared successfully"}
     except Exception as e:
+        db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -43,7 +48,6 @@ def read_job_status(job_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Job not found")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 
 @router.get("/{job_id}/results")
@@ -71,14 +75,25 @@ def get_job_results(job_id: int, db: Session = Depends(get_db)):
         return {
             "job": {"id": job.id, "status": job.status, "filename": job.filename},
             "transactions": [
-                {"txn_id": t.txn_id, "date": t.date, "merchant": t.merchant,
-                 "amount": t.amount, "currency": t.currency, "status": t.status,
-                 "category": t.category, "account_id": t.account_id}
+                {
+                    "txn_id": t.txn_id,
+                    "date": t.date,
+                    "merchant": t.merchant,
+                    "amount": t.amount,
+                    "currency": t.currency,
+                    "status": t.status,
+                    "category": t.category,
+                    "account_id": t.account_id,
+                }
                 for t in transactions
             ],
             "anomalies": [
-                {"txn_id": t.txn_id, "amount": t.amount, "merchant": t.merchant,
-                 "reason": t.anomaly_reason}
+                {
+                    "txn_id": t.txn_id,
+                    "amount": t.amount,
+                    "merchant": t.merchant,
+                    "reason": t.anomaly_reason,
+                }
                 for t in anomalies
             ],
             "category_breakdown": category_spend,
@@ -89,12 +104,16 @@ def get_job_results(job_id: int, db: Session = Depends(get_db)):
                 "anomaly_count": summary.anomaly_count,
                 "narrative": summary.narrative,
                 "risk_level": summary.risk_level,
-            } if summary else None,
+            }
+            if summary
+            else None,
         }
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch results: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to fetch results: {str(e)}"
+        )
 
 
 @router.post("/upload")

@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 
+import pandas as pd
 from sqlalchemy.orm import Session
 
 from lib.llm import classify_transactions, generate_summary
@@ -36,6 +37,7 @@ def process_job(job: Job, df, db: Session):
                 db.commit()
                 print(f"LLM classification failed: {e}")
 
+        df["amount"] = pd.to_numeric(df["amount"], errors="coerce")
         stats = {
             "total_spend_inr": float(df[df["currency"] == "INR"]["amount"].sum()),
             "total_spend_usd": float(df[df["currency"] == "USD"]["amount"].sum()),
