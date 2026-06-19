@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.orm import Session
 
 from db.database import get_db
+from lib.anomaly import detect_anomalies
 from lib.cleaning import clean_transactions
 from models.job import Job
 from models.transaction import Currency, Transaction, TxnStatus
@@ -85,6 +86,8 @@ def upload_job(file: UploadFile = File(...), db: Session = Depends(get_db)):
             "error": str(e),
         }
 
+    df = detect_anomalies(df)
+
     try:
         for row in df.to_dict(orient="records"):
             currency_value = str(row.get("currency")).upper()
@@ -99,6 +102,8 @@ def upload_job(file: UploadFile = File(...), db: Session = Depends(get_db)):
                 status=TxnStatus[status_value],
                 category=row.get("category"),
                 account_id=row.get("account_id"),
+                is_anomaly=bool(row.get("is_anomaly", False)),
+                anomaly_reason=row.get("anomaly_reason"),
                 notes=row.get("notes"),
             )
             db.add(transaction)
