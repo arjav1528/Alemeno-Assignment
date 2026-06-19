@@ -16,11 +16,11 @@ def process_job(job: Job, df, db: Session):
             try:
                 batch = [
                     {
-                        "txn_id": r["txn_id"],
+                        "txn_id": r["txn_id"] or str(idx),
                         "merchant": r["merchant"],
                         "amount": r["amount"],
                     }
-                    for _, r in uncategorized.iterrows()
+                    for idx, r in uncategorized.iterrows()
                 ]
                 classifications = classify_transactions(batch)
                 for txn_id, category in classifications.items():
