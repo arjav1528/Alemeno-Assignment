@@ -1,27 +1,28 @@
 import json
 import time
 
-import google.generativeai as genai
+from groq import Groq
 
-from lib.env import GEMINI_API_KEY
+from lib.env import GROQ_API_KEY
 
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel("gemini-2.0-flash")
-
+client = Groq(api_key=GROQ_API_KEY)
+MODEL = "llama-3.1-8b-instant"
 MAX_RETRIES = 3
 
 
 def _call_with_retry(prompt: str) -> str:
     for attempt in range(MAX_RETRIES):
         try:
-            response = model.generate_content(
-                prompt,
-                generation_config={
-                    "response_mime_type": "application/json",
-                    "temperature": 0,
-                },
+            response = client.chat.completions.create(
+                model=MODEL,
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"},
+                temperature=0,
             )
-            return response.text
+            content = response.choices[0].message.content
+            if content is None:
+                raise RuntimeError("LLM returned empty response")
+            return content
         except Exception as e:
             if attempt == MAX_RETRIES - 1:
                 raise e
