@@ -12,6 +12,7 @@ from lib.process import process_job
 from models.job import Job, JobStatus, JobSummary
 from models.transaction import Currency, Transaction, TxnStatus
 from routers import transaction
+from tasks import process_csv
 
 router = APIRouter(prefix="/jobs")
 
@@ -119,66 +120,16 @@ def get_job_results(job_id: int, db: Session = Depends(get_db)):
 @router.post("/upload")
 def upload_job(file: UploadFile = File(...), db: Session = Depends(get_db)):
     try:
-        df = pd.read_csv(
-            file.file,
-            usecols=[
-                "txn_id",
-                "date",
-                "merchant",
-                "amount",
-                "currency",
-                "status",
-                "category",
-                "account_id",
-                "notes",
-            ],
-        )
-        row_count_raw = len(df)
-        df = clean_transactions(df)
-        row_count_clean = len(df)
-        filename = file.filename
-        job = Job(
-            row_count_raw=row_count_raw,
-            row_count_clean=row_count_clean,
-            filename=filename,
-        )
+        csv_data = file.file.read().decode("utf-8")
+
+        job = Job(filename=file.filename, row_count_raw=0)
         db.add(job)
         db.commit()
         db.refresh(job)
 
-    except Exception as e:
-        db.rollback()
-        return {
-            "message": "Failed to upload job",
-            "error": str(e),
-        }
+        process_csv.delay(job.id, csv_data)  # type: ignore
 
-    df = detect_anomalies(df)
-
-    try:
-        for row in df.to_dict(orient="records"):
-            currency_value = str(row.get("currency")).upper()
-            status_value = str(row.get("status")).upper()
-            transaction = Transaction(
-                job_id=job.id,
-                txn_id=row.get("txn_id"),
-                date=row.get("date"),
-                merchant=row.get("merchant"),
-                amount=float(row["amount"]),
-                currency=Currency[currency_value],
-                status=TxnStatus[status_value],
-                category=row.get("category"),
-                account_id=row.get("account_id"),
-                is_anomaly=bool(row.get("is_anomaly", False)),
-                anomaly_reason=row.get("anomaly_reason"),
-                notes=row.get("notes"),
-            )
-            db.add(transaction)
-
-        db.commit()
-        process_job(job, df, db)
-
-        return {"message": "Job uploaded successfully", "job_id": job.id}
+        return {"message": "Job enqueued successfully", "job_id": job.id}
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
