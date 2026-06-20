@@ -7,11 +7,12 @@ from sqlalchemy.orm import Mapped, mapped_column
 from db.database import Base
 
 
+
 class JobStatus(enum.Enum):
     PENDING = "pending"
+    PROCESSING = "processing"  # add this
     SUCCESS = "success"
     FAILED = "failed"
-
 
 class Job(Base):
     __tablename__ = "jobs"
